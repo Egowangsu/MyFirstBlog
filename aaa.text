@@ -1,5 +1,9 @@
 aaaa
 bbbb
 cccc
+<<<<<<< HEAD
 dddd edit master
+=======
+dddd edit by hot _fix
+>>>>>>> hot_fix
 
