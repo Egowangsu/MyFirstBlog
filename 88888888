@@ -1,0 +1,60 @@
+package com.nbport.flex.application.controller;
+import com.alibaba.fastjson.JSONObject;
+import com.nbport.flex.api.entity.User;
+import com.nbport.flex.api.service.UserService;
+import com.nbport.flex.api.utils.Response;
+import com.nbport.flex.api.utils.ResponseResult;
+import com.nbport.flex.application.Utils.JwtTokenUtil;
+import com.nbport.flex.application.Utils.RestTemplateUtils;
+import org.apache.dubbo.config.annotation.Reference;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.*;
+import java.util.HashMap;
+import java.util.Map;
+
+
+@RestController
+@RequestMapping("/api")
+@CrossOrigin(origins = "*", maxAge = 3600)
+public class VerifyController {
+
+    @Reference(version = "1.0.0")
+    private UserService userService;
+
+    @Autowired
+    private JwtTokenUtil jwtTokenUtil;
+
+    ResponseResult responseResult = null;
+
+    //接收验证的token方法
+    @RequestMapping("/checkToken")
+    public String checkToken(@RequestParam(value = "token",required = true) String token){
+        //调取方法访问URL，得到返回json数据
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        //添加参数
+        params.add("token", token);
+        //访问接口返回json格式字符串
+        String result = RestTemplateUtils.postForm("http://localhost:8000/api/checkToken2", params);
+        //String result = RestTemplateUtils.postForm("http://10.120.2.19:8080/eas/Login.do?type=getPortal&key=Material2021Wzg&", params);
+        JSONObject paramsObj = JSONObject.parseObject(result);//解析返回结果成对json对象
+        try{
+            if("true".equals(paramsObj.get("result")) && !("0").equals(paramsObj.get("mobile"))){
+                User userInfo = userService.loginByUserNo((String) paramsObj.get("mobile"));
+                String token2 = jwtTokenUtil.getToken(userInfo.getUserNo(),userInfo.getPassword());
+                //进入系统
+                Map maps = new HashMap();
+                maps.put("data", userInfo);
+                maps.put("token",token2);
+                responseResult = Response.success(maps);
+            }else{
+                //验证失败时页面跳转至登陆页面
+                responseResult = Response.fail("验证失败");
+            }
+        }catch (Exception e){
+            responseResult = Response.fail(e.getMessage());
+        }finally {
+            return JSONObject.toJSONString(responseResult);
+        }
+    }
